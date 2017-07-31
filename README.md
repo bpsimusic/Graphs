@@ -1,43 +1,74 @@
 # Graphs/Topological Sort
 
-### Vertex and Edge
+## Vertex and Edge
 
-Start off by writing the Vertex and Edge Classes. The Vertex Class should take in an value and store in_edges and out_edges. The Edge Class should take in a from_vertex, a to_vertex, and a cost if it is weighted. It should add itself to the from_vertex and to_vertex's in and out edges respectively (accessor methods!). Its destroy method should remove it from the in and out edges and sets its from and to vertices to nil. Once you have the specs passing, move on to topological sort.
+I implemented my own graph in Ruby by creating Vertex and Edge classes. Each Vertex holds a value and an array of
+in_edges and out_edges. Each Edge holds a to_vertex, from_vertex, and cost.
 
-What you've created is an Adjacency List representation of a Graph.
+```ruby
+class Vertex
+  def initialize(value)
+    @value = value
+    @in_edges = []
+    @out_edges = []
+  end
+end
 
-### Kahn's Algorithm
+class Edge
+  def initialize(from_vertex, to_vertex, cost = 1)
+    @from_vertex = from_vertex
+    @to_vertex = to_vertex
+    @cost = cost
+    from_vertex.out_edges.push(self)
+    to_vertex.in_edges.push(self)
+  end
+end
+```
 
-Let's first write topological sort using Kahn's Algorithm.
+Every time you create an edge, you must add itself to
+the vertex's in_edges array or out_edges array.
 
-The idea of Kahn’s algorithm is to repeatedly remove nodes that have zero in-degree. The steps are as follows:
+## Kahn's Algorithm
 
-* Determine the in-degree of each node.
-* Collect nodes with zero in-degree in a queue.
-* While the queue is not empty:
-  - Pop node `u` from queue,
-  - remove `u` from the graph (depending on your implementation, this may or may not involve the `destroy!` method; what are the complications to destroying as we loop? What is another way we can track the number of `in_edges`?),
-  - check if there is a new node with in-degree zero (among the neighbors of `u`)
-  - If yes, put that node into the queue.
-  - We maintain a list that records in which order the nodes are removed.
-* If the queue is empty:
-  - if we removed all nodes from the graph, return the list
-  - else we return an empty list that indicates that an order is not possible due to a cycle
+Kahn's Algorithm is most widely used to implement Topological Sort for a dependency set. It uses BFS to sort the vertices.
 
-What is the time complexity of this algorithm? Make sure to analyze time complexity based on the set of vertices and edges.
+We add vertices without any in_edges to a queue. For each vertex in the queue, we delete the out_edge.
 
-### Tarjan's Algorithm
+```Ruby
+def destroy!
+  from_vertex.out_edges.delete(self)
+  to_vertex.in_edges.delete(self)
+  self.from_vertex = nil
+  self.to_vertex = nil
+end
+```
 
-Next, implement topological sort using Tarjan's Algorithm.
+After the out_edge is deleted, we move the vertex from the queue to the sorted list, and remove the vertex from the graph.
 
-An alternative algorithm for topological sorting is based on depth-first search. The algorithm loops through each node of the graph, in an arbitrary order, initiating a depth-first search that terminates when it hits any node that has already been visited since the beginning of the topological sort or the node has no outgoing edges (i.e. a leaf node):
+Next, we examine the graph for any more vertices without in_edges. We put them onto the queue. We repeat this step iteratively until there are no more vertices in the queue.
 
-Each node n gets prepended to the output list L only after considering all other nodes which depend on n (all descendants of n in the graph). Specifically, when the algorithm adds node n, we are guaranteed that all nodes which depend on n are already in the output list L: they were added to L either by the recursive call to visit() which ended before the call to visit n, or by a call to visit() which started even before the call to visit n.
+```Ruby
+vertices.each do |vertex|
+  if vertex.in_edges.empty?
+    if !no_in_edges.include?(vertex)  #you don't want to include vertices twice
+      no_in_edges.push(vertex)
+    end
+  end
+end
+```
 
-Cycle catching can be tricky, try without it first maybe.
-What is the time complexity?
+If a graph is cyclic, the graph is not a dependency list, and the topological sort will return an empty array.
 
+## Time Complexity
 
-### Install order
+The time complexity of this will be O(|V| + |E|). The |V| is the number of vertices, while |E| is the number of edges.
 
-Given an Array of tuples, where `tuple[0]` represents a package id, and `tuple[1]` represents its dependency, determine the order in which the packages should be installed. Only packages that have dependencies will be listed, but all packages from `1..max_id` exist. N.B. this is how `npm` works.
+|V| comes from iterating each vertex and seeing whether the vertex has any in_edges. |E| comes from deleting each edge.
+
+If it's a dense graph, |E| will become close to |V^2| and time complexity will be quadratic. If it's a sparse graph, |E| will become close to |V| and time complexity will be linear. 
+
+## NPM install
+
+I implemented a topological sort on a NPM problem. The way NPM installs dependencies is with a dependency list.
+
+In the problem, tuple[0] represents the package id, while tuple[1] represents tuple[0]'s dependency. Tuple[1] must be installed before tuple[0].
